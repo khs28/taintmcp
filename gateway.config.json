@@ -1,0 +1,6 @@
+{
+  "listenPort": 3100,
+  "target": {
+    "url": "http://localhost:3200/mcp"
+  }
+}

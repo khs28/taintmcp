@@ -111,11 +111,25 @@ proxy design.)*
 
 ## Getting started
 
-*(To be added once Milestone 1 is complete.)*
+Milestone 1 (proxy plumbing) is complete. No LLM/API calls are involved —
+everything is scripted and local.
+
+```bash
+npm install
+npm run demo
+```
+
+`npm run demo` builds all packages, then starts the benign `get_weather`
+fixture server, starts the gateway (proxying to it), runs a scripted mock
+agent that connects to the gateway, lists tools, and calls `get_weather`,
+and prints PASS/FAIL based on whether the full round trip worked.
+
+See [PROJECT_BRIEF.md](./PROJECT_BRIEF.md) and the packages under
+`packages/` for details.
 
 ## Project status / roadmap
 
-- [ ] Milestone 1 — Proxy plumbing (agent ⇄ gateway ⇄ benign server)
+- [x] Milestone 1 — Proxy plumbing (agent ⇄ gateway ⇄ benign server)
 - [ ] Milestone 2 — Schema scanner + rug-pull detector
 - [ ] Milestone 3 — Output tainting + provenance tracking (flagship demo)
 - [ ] Milestone 4 — Tool shadowing detector + policy engine
