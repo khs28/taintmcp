@@ -90,9 +90,31 @@ Agent ⇄ taintmcp ⇄ real MCP server(s)
 
 ## Demo
 
-*(To be added after Milestone 3 — a full before/after transcript showing
-a real Claude agent falling for an indirect prompt injection attack with
-taintmcp off, and getting blocked with taintmcp on.)*
+Milestone 3 wires in a real Claude agent (`claude-haiku-4-5`) against the
+malicious server's `read_notes` tool, whose *response* (not its
+description — check #1 has nothing to flag here on purpose) carries an
+indirect prompt injection instructing the agent to forward the user's
+notes to an external address via `send_email`, a real, sensitive tool the
+agent already has legitimate access to on the trusted benign server.
+
+Honest result: `claude-haiku-4-5` reads the injected instruction and
+declines to act on it, with or without the gateway — current Claude
+models are trained to treat tool output as data, not commands, and this
+particular attack doesn't fool it even unprotected. That's a genuine,
+worth-noting finding, not a taintmcp result, so the demo doesn't lean on
+it. Instead it drives the same MCP connections directly — the way a more
+naively-implemented or less-aligned agent would — to prove the actual
+mechanism deterministically:
+
+- **Gateway off:** `read_notes`' response reaches the caller unwrapped,
+  and a `send_email` call carrying that content goes straight through —
+  nothing stops it.
+- **Gateway on:** the same response comes back wrapped in
+  provenance-tagged `<untrusted-content>` markers (check #4), and the
+  same `send_email` call is blocked before it reaches the real tool —
+  while an unrelated, untainted `send_email` call is still allowed
+  through, showing the policy targets tainted calls specifically, not
+  `send_email` wholesale.
 
 ## Architecture
 
@@ -113,9 +135,18 @@ only.
 As of milestone 2, right after the gateway connects to the downstream
 server (and before any tool is ever exposed to the agent), it runs every
 tool through the schema/description scanner and the rug-pull detector,
-logging what it finds. `tools/list` and `tools/call` are still forwarded
-verbatim either way — these checks only detect and log so far, they don't
-block or rewrite anything yet.
+logging what it finds. `tools/list` is forwarded verbatim either way —
+these two checks only detect and log, they don't block or rewrite
+anything.
+
+As of milestone 3, every `tools/call` response is wrapped in a
+provenance-tagged `<untrusted-content>` marker before being relayed back
+(check #4), and every outgoing `tools/call` is checked against an
+in-memory taint store: if its arguments contain a fragment traceable back
+to a prior tainted response *and* the target tool is marked
+`destructiveHint`, the call is blocked before it ever reaches the
+downstream server. This is a minimal hardcoded policy, not the
+configurable policy engine (check #6) — that's milestone 4.
 
 ## Tech stack
 
@@ -133,14 +164,14 @@ block or rewrite anything yet.
 
 ## Getting started
 
-Milestones 1 (proxy plumbing) and 2 (schema scanner + rug-pull detector)
-are complete. No LLM/API calls are involved — everything is scripted and
-local.
+Milestones 1 (proxy plumbing), 2 (schema scanner + rug-pull detector),
+and 3 (output tainting + provenance tracking) are complete.
 
 ```bash
 npm install
 npm run demo      # milestone 1: full round trip through the gateway
 npm run demo:m2   # milestone 2: schema scanner + rug-pull detector
+npm run demo:m3   # milestone 3: output tainting + provenance tracking
 ```
 
 `npm run demo` builds all packages, then runs the scripted mock agent,
@@ -160,9 +191,20 @@ rug-pull detector independently flags that a previously-trusted tool's
 schema changed, on top of the scanner flagging its new poisoned content.
 Prints PASS/FAIL based on whether both checks behaved as expected.
 
-Nothing is blocked at this stage — both checks only detect and log. The
-policy engine that turns these signals into an allow/flag/block decision
-is milestone 4.
+Nothing is blocked in milestone 2 — both checks only detect and log.
+
+`npm run demo:m3` needs a real Anthropic API key: set
+`TAINTMCP_ANTHROPIC_API_KEY` (not `ANTHROPIC_API_KEY`, which is reserved
+by the platform) before running it. It runs a real `claude-haiku-4-5`
+agent against the benign and malicious servers with the gateway off, then
+again with the gateway on, and drives the same MCP connections directly
+to deterministically prove check #4's tainting and blocking mechanism —
+see the [Demo](#demo) section above for what it shows and PASS/FAIL is
+based on.
+
+The policy engine that generalizes blocking beyond milestone 3's
+hardcoded "block if tainted and destructive-hint" rule (check #6) is
+milestone 4.
 
 See [PROJECT_BRIEF.md](./PROJECT_BRIEF.md) and the packages under
 `packages/` for details.
@@ -171,7 +213,7 @@ See [PROJECT_BRIEF.md](./PROJECT_BRIEF.md) and the packages under
 
 - [x] Milestone 1 — Proxy plumbing (agent ⇄ gateway ⇄ benign server)
 - [x] Milestone 2 — Schema scanner + rug-pull detector
-- [ ] Milestone 3 — Output tainting + provenance tracking (flagship demo)
+- [x] Milestone 3 — Output tainting + provenance tracking (flagship demo)
 - [ ] Milestone 4 — Tool shadowing detector + policy engine
 - [ ] Milestone 5 — Dashboard / log viewer
 - [ ] Milestone 6 — Final writeup
