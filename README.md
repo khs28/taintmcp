@@ -194,7 +194,3 @@ as a local test fixture to validate taintmcp's defenses. It is for
 educational and research purposes only and is not intended to be deployed
 or used against systems you do not own or have explicit permission to
 test.
-
-## License
-
-MIT
