@@ -23,7 +23,7 @@
 import { rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { loadConfig, connectDownstream, deriveServerId, inspectTools, logInspectionReport, openStore } from "@taintmcp/gateway";
+import { loadConfig, connectDownstreams, inspectTools, logInspectionReport, openStore } from "@taintmcp/gateway";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CONFIG_PATH = path.join(ROOT, "gateway.malicious.config.json");
@@ -31,15 +31,14 @@ const CONFIG_PATH = path.join(ROOT, "gateway.malicious.config.json");
 async function runConnection(label, env) {
   console.log(`\n=== ${label} ===`);
   const config = await loadConfig(CONFIG_PATH);
-  const client = await connectDownstream({ ...config, target: { ...config.target, env } });
-  const serverId = deriveServerId(client, config);
+  const [conn] = await connectDownstreams({ ...config, targets: config.targets.map((t) => ({ ...t, env })) });
   const db = openStore(path.join(ROOT, config.storage?.dbPath ?? "taintmcp.db"));
 
-  const report = await inspectTools(client, serverId, db);
+  const report = await inspectTools(conn.client, conn.serverId, db);
   logInspectionReport(report);
 
   db.close();
-  await client.close();
+  await conn.client.close();
   return report;
 }
 

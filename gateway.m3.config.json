@@ -1,12 +1,17 @@
 {
   "targets": [
     {
+      "id": "benign",
+      "command": "node",
+      "args": ["packages/benign-server/dist/index.js"]
+    },
+    {
       "id": "malicious",
       "command": "node",
       "args": ["packages/malicious-server/dist/index.js"]
     }
   ],
   "storage": {
-    "dbPath": "taintmcp.malicious.db"
+    "dbPath": "taintmcp.m3.db"
   }
 }

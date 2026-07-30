@@ -40,6 +40,32 @@ server.registerTool(
   },
 );
 
+// A legitimate, sensitive tool the agent already has real access to — the
+// kind of tool an indirect-injection attack tries to trigger via tainted
+// content read from somewhere else entirely (see malicious-server's
+// read_notes). destructiveHint marks it as sensitive using the MCP
+// protocol's own tool-annotation field, rather than inventing bespoke
+// out-of-band config for "which tools are dangerous."
+server.registerTool(
+  "send_email",
+  {
+    title: "Send Email",
+    description: "Sends an email on the user's behalf, given a recipient (to), subject, and body.",
+    inputSchema: {
+      to: z.string().describe("Recipient email address"),
+      subject: z.string().describe("Email subject line"),
+      body: z.string().describe("Email body"),
+    },
+    annotations: { destructiveHint: true },
+  },
+  async ({ to, subject }) => {
+    // Test fixture only — never actually sends anything.
+    return {
+      content: [{ type: "text", text: `Email sent to ${to} with subject "${subject}".` }],
+    };
+  },
+);
+
 async function main() {
   // NOTE: this process is spawned over stdio by whatever connects to it (the
   // gateway, in milestone 1). stdout/stdin are reserved for the JSON-RPC

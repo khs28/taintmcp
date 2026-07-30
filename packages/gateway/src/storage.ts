@@ -15,6 +15,25 @@ export interface ToolSnapshot {
   lastSeenAt: string;
 }
 
+export interface ProvenanceLogEntry {
+  provenanceId: string;
+  serverId: string;
+  toolName: string;
+  direction: "response" | "call";
+  tainted: number; // 0 or 1 — node:sqlite has no native boolean column type
+  sourceProvenanceIds: string; // JSON array, populated for direction = "call"
+  contentExcerpt: string;
+  createdAt: string;
+}
+
+export interface PolicyDecisionEntry {
+  toolName: string;
+  decision: "allow" | "block";
+  reason: string;
+  sourceProvenanceIds: string; // JSON array
+  createdAt: string;
+}
+
 export function openStore(dbPath: string): DatabaseSync {
   const resolved = resolve(dbPath);
   mkdirSync(dirname(resolved), { recursive: true });
@@ -29,8 +48,57 @@ export function openStore(dbPath: string): DatabaseSync {
       last_seen_at TEXT NOT NULL,
       PRIMARY KEY (server_id, tool_name)
     );
+
+    CREATE TABLE IF NOT EXISTS provenance_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      provenance_id TEXT NOT NULL,
+      server_id TEXT NOT NULL,
+      tool_name TEXT NOT NULL,
+      direction TEXT NOT NULL,
+      tainted INTEGER NOT NULL,
+      source_provenance_ids TEXT NOT NULL,
+      content_excerpt TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS policy_decisions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tool_name TEXT NOT NULL,
+      decision TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      source_provenance_ids TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
   `);
   return db;
+}
+
+const EXCERPT_MAX_LENGTH = 500;
+
+export function insertProvenanceLog(
+  db: DatabaseSync,
+  entry: Omit<ProvenanceLogEntry, "createdAt" | "contentExcerpt"> & { content: string },
+): void {
+  db.prepare(
+    `INSERT INTO provenance_log (provenance_id, server_id, tool_name, direction, tainted, source_provenance_ids, content_excerpt, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    entry.provenanceId,
+    entry.serverId,
+    entry.toolName,
+    entry.direction,
+    entry.tainted,
+    entry.sourceProvenanceIds,
+    entry.content.slice(0, EXCERPT_MAX_LENGTH),
+    new Date().toISOString(),
+  );
+}
+
+export function insertPolicyDecision(db: DatabaseSync, entry: Omit<PolicyDecisionEntry, "createdAt">): void {
+  db.prepare(
+    `INSERT INTO policy_decisions (tool_name, decision, reason, source_provenance_ids, created_at)
+     VALUES (?, ?, ?, ?, ?)`,
+  ).run(entry.toolName, entry.decision, entry.reason, entry.sourceProvenanceIds, new Date().toISOString());
 }
 
 export function getSnapshot(db: DatabaseSync, serverId: string, toolName: string): ToolSnapshot | undefined {

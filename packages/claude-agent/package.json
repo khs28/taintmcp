@@ -1,0 +1,18 @@
+{
+  "name": "@taintmcp/claude-agent",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A real Claude agent, used from Milestone 3 onward to prove attacks succeed without taintmcp and fail with it.",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
+    "@modelcontextprotocol/sdk": "^1.30.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
