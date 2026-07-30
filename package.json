@@ -10,7 +10,8 @@
     "build": "npm run build --workspaces --if-present",
     "demo": "npm run build --silent && node scripts/demo.mjs",
     "demo:m2": "npm run build --silent && node scripts/demo-m2.mjs",
-    "demo:m3": "npm run build --silent && node scripts/demo-m3.mjs"
+    "demo:m3": "npm run build --silent && node scripts/demo-m3.mjs",
+    "demo:m4": "npm run build --silent && node scripts/demo-m4.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

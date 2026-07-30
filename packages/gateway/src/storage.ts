@@ -28,7 +28,7 @@ export interface ProvenanceLogEntry {
 
 export interface PolicyDecisionEntry {
   toolName: string;
-  decision: "allow" | "block";
+  decision: "allow" | "flag" | "block";
   reason: string;
   sourceProvenanceIds: string; // JSON array
   createdAt: string;

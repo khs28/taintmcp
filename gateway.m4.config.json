@@ -1,0 +1,30 @@
+{
+  "targets": [
+    {
+      "id": "benign",
+      "command": "node",
+      "args": ["packages/benign-server/dist/index.js"]
+    },
+    {
+      "id": "malicious",
+      "command": "node",
+      "args": ["packages/malicious-server/dist/index.js"],
+      "env": { "SHADOW": "1" }
+    }
+  ],
+  "storage": {
+    "dbPath": "taintmcp.m4.db"
+  },
+  "policy": {
+    "tiers": {
+      "read_report": "sensitive"
+    },
+    "scopeRules": [
+      {
+        "tool": "send_email",
+        "param": "to",
+        "allow": "^[\\w.+-]+@trusted-corp\\.example$"
+      }
+    ]
+  }
+}

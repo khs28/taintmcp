@@ -116,6 +116,24 @@ mechanism deterministically:
   through, showing the policy targets tainted calls specifically, not
   `send_email` wholesale.
 
+Milestone 4 adds the tool shadowing detector (check #3) and replaces that
+hardcoded rule with a real, configurable policy engine (check #6). The
+malicious server (with `SHADOW=1`) registers `get_weather` — an exact
+clone of the benign server's tool name — and `get_weathr`, a
+one-character typosquat of it. At connection time the gateway flags both:
+the exact collision as ambiguous routing, the fuzzy one as a likely
+typosquat. A configured policy (tiers + scope rules) then drives six
+different outcomes for six different calls:
+
+| Call | Signals | Decision |
+|---|---|---|
+| `get_weather` | exactly shadowed | **block** — routing is ambiguous, could be intercepted |
+| `get_weathr` | fuzzily shadowed | **flag** — suspicious but not certain, still delivered |
+| `send_email` to `backup@notes-archive.example` | out-of-scope recipient, untainted | **block** — scope violation |
+| `send_email` to `person@trusted-corp.example`, untainted body | in scope, untainted | **allow** |
+| `read_report` with a tainted argument, tiered `sensitive` via config | tainted, sensitive tier | **flag** — delivered, logged for review |
+| `send_email` to `person@trusted-corp.example` with a tainted body | in scope, tainted, critical tier | **block** — taint wins even though scope passed |
+
 ## Architecture
 
 Milestone 1 uses stdio transport for both hops, matching how a local MCP
@@ -142,11 +160,26 @@ anything.
 As of milestone 3, every `tools/call` response is wrapped in a
 provenance-tagged `<untrusted-content>` marker before being relayed back
 (check #4), and every outgoing `tools/call` is checked against an
-in-memory taint store: if its arguments contain a fragment traceable back
-to a prior tainted response *and* the target tool is marked
-`destructiveHint`, the call is blocked before it ever reaches the
-downstream server. This is a minimal hardcoded policy, not the
-configurable policy engine (check #6) — that's milestone 4.
+in-memory taint store for a fragment traceable back to a prior tainted
+response.
+
+As of milestone 4, right after every server connects and is inspected
+(checks #1/#2), the gateway compares every server's tools against every
+other server's — the tool shadowing detector (check #3) — flagging exact
+name collisions (ambiguous routing) and fuzzy/near-miss collisions
+(typosquats) via Levenshtein distance. Milestone 3's hardcoded
+"block if tainted and destructive" rule is gone; every `tools/call` now
+goes through the configurable policy engine (check #6, `policy.ts`),
+which classifies the target tool's sensitivity tier (from config or its
+MCP `destructiveHint`/`readOnlyHint` annotations), checks the call's
+arguments against configured scope rules (check #5 — e.g. "`send_email`'s
+`to` must match this pattern"), folds in the taint/provenance and shadow
+status from above, and evaluates an ordered, configurable rule list
+(first match wins) to reach a final **allow / flag / block** decision.
+"Flag" delivers the call but prepends a `[taintmcp] FLAGGED FOR REVIEW`
+notice to the response and logs it; "block" never reaches the downstream
+server at all. See `gateway.m4.config.json` for an example policy
+config, and the table above for the six decisions it produces.
 
 ## Tech stack
 
@@ -165,13 +198,15 @@ configurable policy engine (check #6) — that's milestone 4.
 ## Getting started
 
 Milestones 1 (proxy plumbing), 2 (schema scanner + rug-pull detector),
-and 3 (output tainting + provenance tracking) are complete.
+3 (output tainting + provenance tracking), and 4 (tool shadowing detector
++ policy engine) are complete.
 
 ```bash
 npm install
 npm run demo      # milestone 1: full round trip through the gateway
 npm run demo:m2   # milestone 2: schema scanner + rug-pull detector
 npm run demo:m3   # milestone 3: output tainting + provenance tracking
+npm run demo:m4   # milestone 4: tool shadowing detector + policy engine
 ```
 
 `npm run demo` builds all packages, then runs the scripted mock agent,
@@ -202,9 +237,12 @@ to deterministically prove check #4's tainting and blocking mechanism —
 see the [Demo](#demo) section above for what it shows and PASS/FAIL is
 based on.
 
-The policy engine that generalizes blocking beyond milestone 3's
-hardcoded "block if tainted and destructive-hint" rule (check #6) is
-milestone 4.
+`npm run demo:m4` is fully scripted (no LLM calls) and drives the
+gateway's MCP server facade directly against `gateway.m4.config.json`,
+which connects the malicious server with `SHADOW=1` set and a small
+policy config. It exercises all six policy outcomes described in the
+[Demo](#demo) section above and prints PASS/FAIL based on whether every
+one landed correctly.
 
 See [PROJECT_BRIEF.md](./PROJECT_BRIEF.md) and the packages under
 `packages/` for details.
@@ -214,7 +252,7 @@ See [PROJECT_BRIEF.md](./PROJECT_BRIEF.md) and the packages under
 - [x] Milestone 1 — Proxy plumbing (agent ⇄ gateway ⇄ benign server)
 - [x] Milestone 2 — Schema scanner + rug-pull detector
 - [x] Milestone 3 — Output tainting + provenance tracking (flagship demo)
-- [ ] Milestone 4 — Tool shadowing detector + policy engine
+- [x] Milestone 4 — Tool shadowing detector + policy engine
 - [ ] Milestone 5 — Dashboard / log viewer
 - [ ] Milestone 6 — Final writeup
 

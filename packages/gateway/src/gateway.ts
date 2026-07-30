@@ -5,6 +5,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema, type CallToolResult, type Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { GatewayConfig, TargetConfig } from "./config.js";
+import { classifyTier, checkScopeViolation, decidePolicy, type ShadowStatus } from "./policy.js";
 import {
   checkCallProvenance,
   extractResponseText,
@@ -14,6 +15,7 @@ import {
 } from "./provenance.js";
 import { checkRugPull, type RugPullResult } from "./rugpull.js";
 import { scanTool, type ScanFinding } from "./scanner.js";
+import { checkToolShadowing, exactlyShadowedNames, fuzzilyShadowedNames, type NamedTool, type ShadowFinding } from "./shadow.js";
 import { insertPolicyDecision, insertProvenanceLog, openStore } from "./storage.js";
 
 const DEFAULT_DB_PATH = "taintmcp.db";
@@ -101,12 +103,40 @@ export function logInspectionReport(report: InspectionReport): void {
 }
 
 /**
- * Milestone 3 adds check #4 (output tainting + provenance tracking) and a
- * minimal hardcoded policy: block a call if its arguments trace back to
- * tainted content AND the target tool is marked destructive/sensitive
- * (annotations.destructiveHint). The real configurable policy engine
- * (check #6) is milestone 4 — this is just enough to prove tainting and
- * provenance tracking work end to end.
+ * Check #3: tool shadowing detector. Runs once, after every configured
+ * server has connected and been inspected by checks #1/#2, comparing
+ * every server's tools against every other server's. Unlike the scanner
+ * and rug-pull detector (per-server, per-tool), shadowing is inherently a
+ * cross-server check — a single tool's schema tells you nothing about
+ * whether another server is impersonating it.
+ */
+export function logShadowReport(findings: ShadowFinding[]): void {
+  if (findings.length === 0) {
+    console.error("[gateway] tool shadowing check: no collisions across connected servers");
+    return;
+  }
+  for (const f of findings) {
+    if (f.severity === "exact") {
+      console.error(
+        `[gateway] [SHADOW: exact] tool "${f.toolName}" is registered by both "${f.serverId}" and "${f.otherServerId}" — ` +
+          `routing is ambiguous and calls to it will be blocked until this is resolved`,
+      );
+    } else {
+      console.error(
+        `[gateway] [SHADOW: fuzzy] "${f.serverId}"'s "${f.toolName}" is suspiciously close (edit distance ${f.distance}) to ` +
+          `"${f.otherServerId}"'s "${f.otherToolName}" — possible typosquat`,
+      );
+    }
+  }
+}
+
+/**
+ * Milestone 4 adds check #3 (tool shadowing, above) and replaces
+ * milestone 3's hardcoded "block if tainted and destructive" shortcut
+ * with the real, configurable policy engine (check #6) — see policy.ts.
+ * It combines tool sensitivity tier, taint/provenance status (check #4),
+ * permission-scope violations (check #5), and shadow status (check #3)
+ * into a final allow / flag / block decision per call.
  */
 export async function startGateway(config: GatewayConfig): Promise<RunningGateway> {
   const db = openStore(config.storage?.dbPath ?? DEFAULT_DB_PATH);
@@ -118,17 +148,38 @@ export async function startGateway(config: GatewayConfig): Promise<RunningGatewa
   }
 
   // Routes an incoming tool name to whichever downstream connection
-  // reported it. Milestone 4's tool-shadowing detector is what's supposed
-  // to catch name collisions across servers — for now the last server
-  // registered for a given name silently wins.
+  // reported it. On an exact shadow collision this is inherently
+  // ambiguous — the policy engine blocks calls to that name outright
+  // (see below), so which connection "wins" here never actually matters.
   const toolOwner = new Map<string, DownstreamConnection>();
   const toolByName = new Map<string, Tool>();
+  const namedTools: NamedTool[] = [];
   for (const conn of connections) {
     const { tools } = await conn.client.listTools();
     for (const tool of tools) {
       toolOwner.set(tool.name, conn);
       toolByName.set(tool.name, tool);
+      namedTools.push({ serverId: conn.serverId, tool });
     }
+  }
+
+  const shadowFindings = checkToolShadowing(namedTools);
+  logShadowReport(shadowFindings);
+  const exactShadowed = exactlyShadowedNames(shadowFindings);
+  const fuzzyShadowed = fuzzilyShadowedNames(shadowFindings);
+
+  function shadowStatusFor(name: string): { status: ShadowStatus; detail?: string } {
+    if (exactShadowed.has(name)) {
+      const f = shadowFindings.find((s) => s.severity === "exact" && (s.toolName === name || s.otherToolName === name));
+      const otherServerId = f && (f.toolName === name ? f.otherServerId : f.serverId);
+      return { status: "exact", detail: otherServerId && `also registered by "${otherServerId}"` };
+    }
+    if (fuzzyShadowed.has(name)) {
+      const f = shadowFindings.find((s) => s.severity === "fuzzy" && (s.toolName === name || s.otherToolName === name));
+      const otherName = f && (f.toolName === name ? f.otherToolName : f.toolName);
+      return { status: "fuzzy", detail: otherName && `closely resembles "${otherName}"` };
+    }
+    return { status: "none" };
   }
 
   const taintStore: TaintedResponse[] = [];
@@ -146,15 +197,11 @@ export async function startGateway(config: GatewayConfig): Promise<RunningGatewa
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
-    const conn = toolOwner.get(name);
-    if (!conn) {
-      throw new Error(`taintmcp gateway: no connected server owns tool "${name}"`);
-    }
 
     const taintCheck = checkCallProvenance(args, taintStore);
     insertProvenanceLog(db, {
       provenanceId: generateProvenanceId(),
-      serverId: conn.serverId,
+      serverId: toolOwner.get(name)?.serverId ?? "unknown",
       toolName: name,
       direction: "call",
       tainted: taintCheck.tainted ? 1 : 0,
@@ -163,34 +210,48 @@ export async function startGateway(config: GatewayConfig): Promise<RunningGatewa
     });
 
     const targetTool = toolByName.get(name);
-    const isSensitive = targetTool?.annotations?.destructiveHint === true;
+    const tier = targetTool ? classifyTier(targetTool, config.policy) : "low";
+    const scope = checkScopeViolation(name, args, config.policy);
+    const shadow = shadowStatusFor(name);
 
-    if (taintCheck.tainted && isSensitive) {
-      const reason = `call to sensitive tool "${name}" contains content traced back to untrusted provenance ${taintCheck.matchedProvenanceIds.join(", ")} (matched: ${taintCheck.matchedFragments.join(", ")})`;
-      console.error(`[gateway] [BLOCKED] ${reason}`);
-      insertPolicyDecision(db, {
+    const policyResult = decidePolicy(
+      {
         toolName: name,
-        decision: "block",
-        reason,
-        sourceProvenanceIds: JSON.stringify(taintCheck.matchedProvenanceIds),
-      });
-      return {
-        isError: true,
-        content: [
-          {
-            type: "text",
-            text: `[taintmcp] Blocked: ${reason}. This call was not sent to the downstream server.`,
-          },
-        ],
-      };
-    }
+        tier,
+        tainted: taintCheck.tainted,
+        matchedProvenanceIds: taintCheck.matchedProvenanceIds,
+        scopeViolation: scope.violation,
+        scopeReason: scope.reason,
+        shadowStatus: shadow.status,
+        shadowDetail: shadow.detail,
+      },
+      config.policy,
+    );
+    const reason = policyResult.reasons.join(" | ");
 
     insertPolicyDecision(db, {
       toolName: name,
-      decision: "allow",
-      reason: taintCheck.tainted ? "tainted but target tool is not marked sensitive" : "no taint detected",
+      decision: policyResult.decision,
+      reason,
       sourceProvenanceIds: JSON.stringify(taintCheck.matchedProvenanceIds),
     });
+
+    if (policyResult.decision === "block") {
+      console.error(`[gateway] [BLOCKED] ${reason}`);
+      return {
+        isError: true,
+        content: [{ type: "text", text: `[taintmcp] Blocked: ${reason}. This call was not sent to the downstream server.` }],
+      };
+    }
+
+    const conn = toolOwner.get(name);
+    if (!conn) {
+      throw new Error(`taintmcp gateway: no connected server owns tool "${name}"`);
+    }
+
+    if (policyResult.decision === "flag") {
+      console.error(`[gateway] [FLAGGED] ${reason}`);
+    }
 
     const result = (await conn.client.callTool({ name, arguments: args })) as CallToolResult;
     const provenanceId = generateProvenanceId();
@@ -207,7 +268,14 @@ export async function startGateway(config: GatewayConfig): Promise<RunningGatewa
       content: responseText,
     });
 
-    return wrapWithProvenance(result, provenanceId, conn.serverId, name);
+    const wrapped = wrapWithProvenance(result, provenanceId, conn.serverId, name);
+    if (policyResult.decision === "flag" && Array.isArray(wrapped.content)) {
+      return {
+        ...wrapped,
+        content: [{ type: "text" as const, text: `[taintmcp] FLAGGED FOR REVIEW: ${reason}` }, ...wrapped.content],
+      };
+    }
+    return wrapped;
   });
 
   // This process is itself spawned over stdio by whatever connects to the
