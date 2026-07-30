@@ -8,7 +8,8 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "demo": "npm run build --silent && node scripts/demo.mjs"
+    "demo": "npm run build --silent && node scripts/demo.mjs",
+    "demo:m2": "npm run build --silent && node scripts/demo-m2.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

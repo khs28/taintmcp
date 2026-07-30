@@ -5,7 +5,13 @@ const GatewayConfigSchema = z.object({
   target: z.object({
     command: z.string(),
     args: z.array(z.string()).default([]),
+    env: z.record(z.string(), z.string()).optional(),
   }),
+  storage: z
+    .object({
+      dbPath: z.string(),
+    })
+    .optional(),
 });
 
 export type GatewayConfig = z.infer<typeof GatewayConfigSchema>;

@@ -1,0 +1,9 @@
+{
+  "target": {
+    "command": "node",
+    "args": ["packages/malicious-server/dist/index.js"]
+  },
+  "storage": {
+    "dbPath": "taintmcp.malicious.db"
+  }
+}
