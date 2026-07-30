@@ -59,7 +59,7 @@ function printEvent(event) {
 async function runScenario(label, host) {
   console.log(`\n${"=".repeat(70)}\n${label}\n${"=".repeat(70)}`);
   const result = await runAgent({
-    apiKey: process.env.ANTHROPIC_API_KEY,
+    apiKey: process.env.TAINTMCP_ANTHROPIC_API_KEY,
     model: MODEL,
     systemPrompt: SYSTEM_PROMPT,
     userMessage: USER_MESSAGE,
@@ -72,11 +72,12 @@ async function runScenario(label, host) {
 }
 
 async function main() {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!process.env.TAINTMCP_ANTHROPIC_API_KEY) {
     console.error(
-      "[demo-m3] ANTHROPIC_API_KEY is not set. This milestone makes real Anthropic API calls " +
-        "(a real Claude agent), so it needs a real key — set ANTHROPIC_API_KEY in this " +
-        "environment and try again.",
+      "[demo-m3] TAINTMCP_ANTHROPIC_API_KEY is not set. This milestone makes real Anthropic API " +
+        "calls (a real Claude agent), so it needs a real key — set TAINTMCP_ANTHROPIC_API_KEY " +
+        "(not ANTHROPIC_API_KEY, which is reserved by the platform) in this environment and try " +
+        "again.",
     );
     process.exit(1);
   }
