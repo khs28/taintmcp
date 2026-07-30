@@ -142,7 +142,7 @@ See [PROJECT_BRIEF.md](./PROJECT_BRIEF.md) and the packages under
 
 ## Project status / roadmap
 
-- [x] Milestone 1 — Proxy plumbing (agent ⇄ gateway ⇄ benign server)
+- [ ] Milestone 1 — Proxy plumbing (agent ⇄ gateway ⇄ benign server)
 - [ ] Milestone 2 — Schema scanner + rug-pull detector
 - [ ] Milestone 3 — Output tainting + provenance tracking (flagship demo)
 - [ ] Milestone 4 — Tool shadowing detector + policy engine
@@ -167,7 +167,3 @@ as a local test fixture to validate taintmcp's defenses. It is for
 educational and research purposes only and is not intended to be deployed
 or used against systems you do not own or have explicit permission to
 test.
-
-## License
-
-MIT
