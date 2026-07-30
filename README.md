@@ -96,8 +96,20 @@ taintmcp off, and getting blocked with taintmcp on.)*
 
 ## Architecture
 
-*(To be added — diagram + explanation of the server-facade / client-facade
-proxy design.)*
+Milestone 1 uses stdio transport for both hops, matching how a local MCP
+client (e.g. Claude Desktop) launches servers today:
+
+```
+mock-agent  --spawns & speaks JSON-RPC over stdio-->  gateway
+gateway     --spawns & speaks JSON-RPC over stdio-->  benign-server (get_weather)
+```
+
+The mock agent spawns the gateway as a child process; the gateway, in
+turn, spawns the benign server as its own child process. `tools/list` and
+`tools/call` are forwarded verbatim in both directions — no inspection or
+rewriting yet. Since a process's stdout is the JSON-RPC channel for
+whichever parent spawned it, the gateway and benign server log all
+diagnostics to stderr only.
 
 ## Tech stack
 
@@ -119,10 +131,11 @@ npm install
 npm run demo
 ```
 
-`npm run demo` builds all packages, then starts the benign `get_weather`
-fixture server, starts the gateway (proxying to it), runs a scripted mock
-agent that connects to the gateway, lists tools, and calls `get_weather`,
-and prints PASS/FAIL based on whether the full round trip worked.
+`npm run demo` builds all packages, then runs the scripted mock agent,
+which spawns the gateway over stdio, which spawns the benign
+`get_weather` fixture server over stdio, lists the tools the gateway
+exposes, calls `get_weather`, and prints PASS/FAIL based on whether the
+full round trip worked.
 
 See [PROJECT_BRIEF.md](./PROJECT_BRIEF.md) and the packages under
 `packages/` for details.

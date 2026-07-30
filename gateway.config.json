@@ -1,0 +1,6 @@
+{
+  "target": {
+    "command": "node",
+    "args": ["packages/benign-server/dist/index.js"]
+  }
+}

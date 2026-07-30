@@ -1,0 +1,17 @@
+{
+  "name": "@taintmcp/mock-agent",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Scripted stand-in for a real AI agent, used to exercise the gateway with zero LLM calls.",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
