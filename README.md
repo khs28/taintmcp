@@ -105,30 +105,42 @@ gateway     --spawns & speaks JSON-RPC over stdio-->  benign-server (get_weather
 ```
 
 The mock agent spawns the gateway as a child process; the gateway, in
-turn, spawns the benign server as its own child process. `tools/list` and
-`tools/call` are forwarded verbatim in both directions — no inspection or
-rewriting yet. Since a process's stdout is the JSON-RPC channel for
-whichever parent spawned it, the gateway and benign server log all
-diagnostics to stderr only.
+turn, spawns the downstream server as its own child process. Since a
+process's stdout is the JSON-RPC channel for whichever parent spawned it,
+the gateway and every test-fixture server log all diagnostics to stderr
+only.
+
+As of milestone 2, right after the gateway connects to the downstream
+server (and before any tool is ever exposed to the agent), it runs every
+tool through the schema/description scanner and the rug-pull detector,
+logging what it finds. `tools/list` and `tools/call` are still forwarded
+verbatim either way — these checks only detect and log so far, they don't
+block or rewrite anything yet.
 
 ## Tech stack
 
 - TypeScript + Node.js
 - [`@modelcontextprotocol/sdk`](https://github.com/modelcontextprotocol) —
   official MCP SDK
-- better-sqlite3 — schema snapshots, provenance log, policy decisions
+- [`node:sqlite`](https://nodejs.org/api/sqlite.html) — schema snapshots,
+  provenance log, policy decisions. Node 22+ ships this built in
+  (experimental); it was chosen over `better-sqlite3` specifically to
+  avoid a native-binary npm dependency, since native modules can't be
+  handed across machines/platforms the way pure-JS ones can
 - Anthropic API (Claude) — the test agent used to validate attacks and
   defenses
 - commander — CLI
 
 ## Getting started
 
-Milestone 1 (proxy plumbing) is complete. No LLM/API calls are involved —
-everything is scripted and local.
+Milestones 1 (proxy plumbing) and 2 (schema scanner + rug-pull detector)
+are complete. No LLM/API calls are involved — everything is scripted and
+local.
 
 ```bash
 npm install
-npm run demo
+npm run demo      # milestone 1: full round trip through the gateway
+npm run demo:m2   # milestone 2: schema scanner + rug-pull detector
 ```
 
 `npm run demo` builds all packages, then runs the scripted mock agent,
@@ -137,13 +149,28 @@ which spawns the gateway over stdio, which spawns the benign
 exposes, calls `get_weather`, and prints PASS/FAIL based on whether the
 full round trip worked.
 
+`npm run demo:m2` connects the gateway to the deliberately malicious test
+server twice, simulating two separate connection events. The first
+connection shows the schema/description scanner flagging two poisoned
+tools immediately (imperative/system-style language, hidden invisible
+Unicode, and an undocumented parameter) and storing a baseline schema
+hash for all three tools it sees. The second connection sets `RUGPULL=1`,
+which silently mutates a previously-clean tool's description — the
+rug-pull detector independently flags that a previously-trusted tool's
+schema changed, on top of the scanner flagging its new poisoned content.
+Prints PASS/FAIL based on whether both checks behaved as expected.
+
+Nothing is blocked at this stage — both checks only detect and log. The
+policy engine that turns these signals into an allow/flag/block decision
+is milestone 4.
+
 See [PROJECT_BRIEF.md](./PROJECT_BRIEF.md) and the packages under
 `packages/` for details.
 
 ## Project status / roadmap
 
-- [ ] Milestone 1 — Proxy plumbing (agent ⇄ gateway ⇄ benign server)
-- [ ] Milestone 2 — Schema scanner + rug-pull detector
+- [x] Milestone 1 — Proxy plumbing (agent ⇄ gateway ⇄ benign server)
+- [x] Milestone 2 — Schema scanner + rug-pull detector
 - [ ] Milestone 3 — Output tainting + provenance tracking (flagship demo)
 - [ ] Milestone 4 — Tool shadowing detector + policy engine
 - [ ] Milestone 5 — Dashboard / log viewer

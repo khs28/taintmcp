@@ -1,4 +1,12 @@
-export { startGateway } from "./gateway.js";
-export type { RunningGateway } from "./gateway.js";
+export { startGateway, connectDownstreams, inspectTools, logInspectionReport } from "./gateway.js";
+export type { RunningGateway, InspectionReport, ToolInspection, DownstreamConnection } from "./gateway.js";
 export { loadConfig } from "./config.js";
-export type { GatewayConfig } from "./config.js";
+export type { GatewayConfig, TargetConfig } from "./config.js";
+export { openStore, getSnapshot } from "./storage.js";
+export type { ToolSnapshot } from "./storage.js";
+export { scanTool } from "./scanner.js";
+export type { ScanFinding } from "./scanner.js";
+export { checkRugPull, hashTool } from "./rugpull.js";
+export type { RugPullResult } from "./rugpull.js";
+export { generateProvenanceId, checkCallProvenance, wrapWithProvenance, extractResponseText } from "./provenance.js";
+export type { TaintedResponse, TaintCheckResult } from "./provenance.js";
