@@ -11,7 +11,8 @@
     "demo": "npm run build --silent && node scripts/demo.mjs",
     "demo:m2": "npm run build --silent && node scripts/demo-m2.mjs",
     "demo:m3": "npm run build --silent && node scripts/demo-m3.mjs",
-    "demo:m4": "npm run build --silent && node scripts/demo-m4.mjs"
+    "demo:m4": "npm run build --silent && node scripts/demo-m4.mjs",
+    "dashboard": "npm run build --silent && node scripts/dashboard.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

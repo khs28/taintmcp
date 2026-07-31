@@ -16,7 +16,7 @@ import {
 import { checkRugPull, type RugPullResult } from "./rugpull.js";
 import { scanTool, type ScanFinding } from "./scanner.js";
 import { checkToolShadowing, exactlyShadowedNames, fuzzilyShadowedNames, type NamedTool, type ShadowFinding } from "./shadow.js";
-import { insertPolicyDecision, insertProvenanceLog, openStore } from "./storage.js";
+import { insertPolicyDecision, insertProvenanceLog, insertRugPullEvent, insertScanFinding, insertShadowFinding, openStore } from "./storage.js";
 
 const DEFAULT_DB_PATH = "taintmcp.db";
 
@@ -72,11 +72,19 @@ export async function connectDownstreams(config: GatewayConfig): Promise<Downstr
  */
 export async function inspectTools(client: Client, serverId: string, db: DatabaseSync): Promise<InspectionReport> {
   const { tools } = await client.listTools();
-  const inspections: ToolInspection[] = tools.map((tool) => ({
-    tool,
-    scanFindings: scanTool(tool),
-    rugPull: checkRugPull(db, serverId, tool),
-  }));
+  const inspections: ToolInspection[] = tools.map((tool) => {
+    const scanFindings = scanTool(tool);
+    const rugPull = checkRugPull(db, serverId, tool);
+
+    for (const finding of scanFindings) {
+      insertScanFinding(db, { serverId, toolName: tool.name, check: finding.check, detail: finding.detail });
+    }
+    if (rugPull.status === "changed" && rugPull.previousHash) {
+      insertRugPullEvent(db, { serverId, toolName: tool.name, previousHash: rugPull.previousHash, currentHash: rugPull.currentHash });
+    }
+
+    return { tool, scanFindings, rugPull };
+  });
   return { serverId, tools: inspections };
 }
 
@@ -165,6 +173,16 @@ export async function startGateway(config: GatewayConfig): Promise<RunningGatewa
 
   const shadowFindings = checkToolShadowing(namedTools);
   logShadowReport(shadowFindings);
+  for (const f of shadowFindings) {
+    insertShadowFinding(db, {
+      severity: f.severity,
+      toolName: f.toolName,
+      otherToolName: f.otherToolName,
+      serverId: f.serverId,
+      otherServerId: f.otherServerId,
+      distance: f.distance,
+    });
+  }
   const exactShadowed = exactlyShadowedNames(shadowFindings);
   const fuzzyShadowed = fuzzilyShadowedNames(shadowFindings);
 

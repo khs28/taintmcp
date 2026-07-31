@@ -134,6 +134,13 @@ different outcomes for six different calls:
 | `read_report` with a tainted argument, tiered `sensitive` via config | tainted, sensitive tier | **flag** — delivered, logged for review |
 | `send_email` to `person@trusted-corp.example` with a tainted body | in scope, tainted, critical tier | **block** — taint wins even though scope passed |
 
+Milestone 5 turns all of the above from terminal scrollback into a static
+HTML dashboard (`npm run dashboard`) reading straight off a taintmcp
+SQLite log — stat tiles for calls/blocked/flagged/rug-pulls/shadows, and
+a table per check: policy decisions, the provenance log (which calls
+were tainted and which prior response they traced back to), shadow
+findings, rug-pull events, and schema scan findings.
+
 ## Architecture
 
 Milestone 1 uses stdio transport for both hops, matching how a local MCP
@@ -181,6 +188,16 @@ notice to the response and logs it; "block" never reaches the downstream
 server at all. See `gateway.m4.config.json` for an example policy
 config, and the table above for the six decisions it produces.
 
+As of milestone 5, three more tables exist purely for the dashboard's
+benefit: `scan_findings` and `shadow_findings` persist checks #1 and #3's
+findings (previously console-only), and `rugpull_events` records every
+time check #2 actually detects a change — not just the current baseline
+hash `tool_schema_snapshots` already tracked, but the historical diff
+event itself. `scripts/dashboard.mjs` reads all six tables (these three,
+plus `policy_decisions`, `provenance_log`, and `tool_schema_snapshots`)
+and renders a single self-contained HTML file — no server, no build
+step, no external requests.
+
 ## Tech stack
 
 - TypeScript + Node.js
@@ -198,8 +215,8 @@ config, and the table above for the six decisions it produces.
 ## Getting started
 
 Milestones 1 (proxy plumbing), 2 (schema scanner + rug-pull detector),
-3 (output tainting + provenance tracking), and 4 (tool shadowing detector
-+ policy engine) are complete.
+3 (output tainting + provenance tracking), 4 (tool shadowing detector +
+policy engine), and 5 (dashboard) are complete.
 
 ```bash
 npm install
@@ -207,6 +224,7 @@ npm run demo      # milestone 1: full round trip through the gateway
 npm run demo:m2   # milestone 2: schema scanner + rug-pull detector
 npm run demo:m3   # milestone 3: output tainting + provenance tracking
 npm run demo:m4   # milestone 4: tool shadowing detector + policy engine
+npm run dashboard # milestone 5: renders dashboard.html from a demo's log
 ```
 
 `npm run demo` builds all packages, then runs the scripted mock agent,
@@ -244,6 +262,16 @@ policy config. It exercises all six policy outcomes described in the
 [Demo](#demo) section above and prints PASS/FAIL based on whether every
 one landed correctly.
 
+`npm run dashboard [dbPath] [outFile]` reads a taintmcp SQLite database
+(default `taintmcp.m4.db`) and writes a static `dashboard.html` (default,
+also configurable) — open it directly in a browser, no server needed.
+Run a demo first to have something to look at: `npm run demo:m4` gives
+the richest view (policy decisions, provenance, shadowing all populated);
+`npm run demo:m2` followed by `npm run dashboard taintmcp.malicious.db`
+shows an actual rug-pull diff instead of an empty table, since milestone
+4's fixtures don't happen to trigger one. Generated `dashboard*.html`
+files are gitignored — regenerate on demand.
+
 See [PROJECT_BRIEF.md](./PROJECT_BRIEF.md) and the packages under
 `packages/` for details.
 
@@ -253,7 +281,7 @@ See [PROJECT_BRIEF.md](./PROJECT_BRIEF.md) and the packages under
 - [x] Milestone 2 — Schema scanner + rug-pull detector
 - [x] Milestone 3 — Output tainting + provenance tracking (flagship demo)
 - [x] Milestone 4 — Tool shadowing detector + policy engine
-- [ ] Milestone 5 — Dashboard / log viewer
+- [x] Milestone 5 — Dashboard / log viewer
 - [ ] Milestone 6 — Final writeup
 
 See [PROJECT_BRIEF.md](./PROJECT_BRIEF.md) for full milestone details.

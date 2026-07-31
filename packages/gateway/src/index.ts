@@ -2,8 +2,24 @@ export { startGateway, connectDownstreams, inspectTools, logInspectionReport, lo
 export type { RunningGateway, InspectionReport, ToolInspection, DownstreamConnection } from "./gateway.js";
 export { loadConfig } from "./config.js";
 export type { GatewayConfig, TargetConfig, PolicyConfig, PolicyRuleConfig, ScopeRuleConfig } from "./config.js";
-export { openStore, getSnapshot } from "./storage.js";
-export type { ToolSnapshot } from "./storage.js";
+export {
+  openStore,
+  getSnapshot,
+  listPolicyDecisions,
+  listScanFindings,
+  listRugPullEvents,
+  listShadowFindings,
+  listProvenanceLog,
+  listToolSnapshots,
+} from "./storage.js";
+export type {
+  ToolSnapshot,
+  PolicyDecisionEntry,
+  ScanFindingEntry,
+  RugPullEventEntry,
+  ShadowFindingEntry,
+  ProvenanceLogEntry,
+} from "./storage.js";
 export { scanTool } from "./scanner.js";
 export type { ScanFinding } from "./scanner.js";
 export { checkRugPull, hashTool } from "./rugpull.js";
