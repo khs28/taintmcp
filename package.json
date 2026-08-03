@@ -20,5 +20,8 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "overrides": {
+    "jose": "6.2.4"
   }
 }
