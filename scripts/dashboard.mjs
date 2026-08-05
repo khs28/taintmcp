@@ -21,7 +21,7 @@ import {
   listShadowFindings,
   listProvenanceLog,
   listToolSnapshots,
-} from "@taintmcp/gateway";
+} from "taintmcp";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dbPath = path.resolve(ROOT, process.argv[2] ?? "taintmcp.m4.db");

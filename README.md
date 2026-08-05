@@ -112,17 +112,47 @@ Every call then goes through a configurable policy engine (check 6, see `package
 Requires Node.js 20 or newer.
 
 ```bash
-git clone https://github.com/khs28/taintmcp.git
-cd taintmcp
-npm install
-npm run build
+npm install -g taintmcp
 ```
 
 ## Usage
 
-### 1. Point it at your MCP server(s)
+### The quick way: no config file at all
 
-Write a gateway config JSON file listing every downstream MCP server you want protected. taintmcp currently connects to downstream servers over stdio, the same way a local MCP client launches them:
+If you have one MCP server you want to protect, wrap its existing launch command directly. Whatever comes after `--` is your server's own command and arguments, untouched:
+
+```bash
+taintmcp wrap -- node /absolute/path/to/your/mcp-server/index.js
+```
+
+That single line starts the gateway, connects it to your server, and applies every check with its default policy (block tainted calls to critical-tier tools, flag tainted calls to sensitive-tier tools, block exactly shadowed tool names, flag fuzzily shadowed ones). Logs go to `taintmcp.db` in the current directory by default; pass `--db /path/to/file.db` to change that.
+
+### Point your MCP client at it
+
+Wherever your client currently launches your MCP server directly, launch taintmcp instead. For example, in an MCP client's config file:
+
+```json
+{
+  "mcpServers": {
+    "my-server": {
+      "command": "taintmcp",
+      "args": ["wrap", "--", "node", "/absolute/path/to/your/mcp-server/index.js"]
+    }
+  }
+}
+```
+
+Your agent now talks to taintmcp, taintmcp talks to your real server, and every check runs on every message in between. You set this up once and never touch it again; there is nothing to run or remember day to day.
+
+### Protecting more than one server, or customizing the policy
+
+`wrap` covers a single server with default rules. For multiple servers, custom sensitivity tiers, or scope rules (like restricting which email domains a tool may send to), scaffold a config file instead:
+
+```bash
+taintmcp init                          # writes taintmcp.config.json
+# edit it: add every server you want protected, adjust the policy
+taintmcp start --config taintmcp.config.json
+```
 
 ```json
 {
@@ -148,45 +178,20 @@ Write a gateway config JSON file listing every downstream MCP server you want pr
 }
 ```
 
-`targets` is required; everything else is optional and falls back to sensible defaults (an untiered tool is classified from its own MCP annotations, `storage.dbPath` defaults to `taintmcp.db`, and the built-in policy rules block tainted calls to critical-tier tools, flag tainted calls to sensitive-tier tools, block calls to exactly shadowed tool names, and flag calls to fuzzily shadowed ones). See `gateway.m4.config.json` in this repo for a fuller example, including custom rules.
-
-### 2. Run the gateway
-
-```bash
-node packages/gateway/dist/cli.js start --config /path/to/your-gateway.json
-```
-
-Or, after `npm link` inside `packages/gateway`, the `taintmcp` command is available directly:
-
-```bash
-taintmcp start --config /path/to/your-gateway.json
-```
-
-### 3. Point your MCP client at the gateway instead of the real server
-
-Wherever your client currently launches your MCP server directly, launch the gateway instead. For example, in an MCP client's config file:
-
-```json
-{
-  "mcpServers": {
-    "my-server": {
-      "command": "node",
-      "args": [
-        "/path/to/taintmcp/packages/gateway/dist/cli.js",
-        "start",
-        "--config",
-        "/path/to/your-gateway.json"
-      ]
-    }
-  }
-}
-```
-
-Your agent now talks to taintmcp, taintmcp talks to your real server, and every check above runs on every message in between.
+Only `targets` is required; everything else falls back to the same defaults `wrap` uses. See `gateway.m4.config.json` in this repo for a fuller example with custom rules.
 
 **Current limitation:** both hops (agent to gateway, and gateway to downstream server) use stdio transport. Remote HTTP/SSE MCP servers are not yet supported.
 
 ## Try it without a real MCP server
+
+This part needs the full source, not the npm package, since the demos and fixtures aren't published:
+
+```bash
+git clone https://github.com/khs28/taintmcp.git
+cd taintmcp
+npm install
+npm run build
+```
 
 The repo ships with a benign fixture server, a deliberately malicious fixture server, and scripted demos that exercise every check without needing your own MCP server or an API key:
 

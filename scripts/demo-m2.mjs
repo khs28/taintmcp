@@ -23,7 +23,7 @@
 import { rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { loadConfig, connectDownstreams, inspectTools, logInspectionReport, openStore } from "@taintmcp/gateway";
+import { loadConfig, connectDownstreams, inspectTools, logInspectionReport, openStore } from "taintmcp";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CONFIG_PATH = path.join(ROOT, "gateway.malicious.config.json");
