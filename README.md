@@ -1,10 +1,21 @@
 # taintmcp
 
+[![npm version](https://img.shields.io/npm/v/taintmcp.svg)](https://www.npmjs.com/package/taintmcp)
+
 A runtime, client-side security gateway for the Model Context Protocol (MCP). taintmcp sits between an AI agent and any MCP server, inspecting tool schemas and tool output in real time to stop indirect prompt injection, tool poisoning, rug-pulls, and tool shadowing, without requiring access to a server's source code or trusting it in any way.
 
 ```
 Agent  <-->  taintmcp  <-->  your real MCP server(s)
 ```
+
+## Quick start
+
+```bash
+npm install -g taintmcp
+taintmcp wrap -- node /absolute/path/to/your/mcp-server/index.js
+```
+
+That is the whole setup for protecting a single MCP server: no config file, no code changes to your server. See [Usage](#usage) below for pointing an actual MCP client at it and for protecting multiple servers with custom policy rules.
 
 ---
 
