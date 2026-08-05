@@ -3,3 +3,5 @@ dist/
 *.log
 *.db
 dashboard*.html
+packages/gateway/README.md
+packages/gateway/LICENSE
