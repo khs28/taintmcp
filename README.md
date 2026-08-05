@@ -155,22 +155,6 @@ Only `targets` is required; everything else falls back to the same defaults `wra
 - Anthropic API (Claude): powers the real test agent used to validate the flagship demo
 - commander: CLI
 
-## Related research and further reading
-
-**Standards and vendor writeups**
-- [OWASP MCP Top 10](https://owasp.org/www-project-mcp-top-10/)
-- [Damn Vulnerable MCP Server](https://github.com/harishsg993010/damn-vulnerable-MCP-server): educational vulnerable-server project this work is informed by (not forked)
-- Microsoft: "Protecting against indirect prompt injection attacks in MCP"
-- Snyk Labs: "Prompt Injection Meets MCP: A New Exploitation Vector Emerging?"
-- Unit 42 (Palo Alto): "New Prompt Injection Attack Vectors Through MCP Sampling"
-- Elastic Security Labs: "MCP Tools: Attack Vectors and Defense Recommendations for Autonomous Agents"
-- CyberArk: ["Poison everywhere: No output from your MCP server is safe"](https://www.cyberark.com/resources/threat-research-blog/poison-everywhere-no-output-from-your-mcp-server-is-safe), practitioner research on the exact attack class check 4 targets: poisoning via tool output, not just metadata
-
-**Academic literature on the client-side gap**
-- Huang, Huang, Tran, Milani Fard, ["Model Context Protocol Threat Modeling and Analyzing Vulnerabilities to Prompt Injection with Tool Poisoning"](https://arxiv.org/abs/2603.22489) (2026): threat-models MCP with STRIDE/DREAD and empirically evaluates how seven major MCP clients actually handle tool-poisoning attacks; finds most fail due to insufficient static validation
-- Hou et al., ["Model Context Protocol (MCP): Landscape, Security Threats, and Future Research Directions"](https://arxiv.org/abs/2503.23278) (2025): lifecycle-phase threat taxonomy across the MCP ecosystem
-- ["MCP-DPT: A Defense-Placement Taxonomy and Coverage Analysis for Model Context Protocol Security"](https://arxiv.org/abs/2604.07551) (2026): maps which architectural layers, clients included, existing defenses actually cover, and which they leave exposed
-
 ---
 
 ## Live demo: before and after
@@ -263,6 +247,22 @@ To point it at a specific database and output path:
 ```bash
 npm run dashboard taintmcp.db dashboard.html
 ```
+
+## Related research and further reading
+
+**Standards and vendor writeups**
+- [OWASP MCP Top 10](https://owasp.org/www-project-mcp-top-10/)
+- [Damn Vulnerable MCP Server](https://github.com/harishsg993010/damn-vulnerable-MCP-server): educational vulnerable-server project this work is informed by (not forked)
+- Microsoft: "Protecting against indirect prompt injection attacks in MCP"
+- Snyk Labs: "Prompt Injection Meets MCP: A New Exploitation Vector Emerging?"
+- Unit 42 (Palo Alto): "New Prompt Injection Attack Vectors Through MCP Sampling"
+- Elastic Security Labs: "MCP Tools: Attack Vectors and Defense Recommendations for Autonomous Agents"
+- CyberArk: ["Poison everywhere: No output from your MCP server is safe"](https://www.cyberark.com/resources/threat-research-blog/poison-everywhere-no-output-from-your-mcp-server-is-safe), practitioner research on the exact attack class check 4 targets: poisoning via tool output, not just metadata
+
+**Academic literature on the client-side gap**
+- Huang, Huang, Tran, Milani Fard, ["Model Context Protocol Threat Modeling and Analyzing Vulnerabilities to Prompt Injection with Tool Poisoning"](https://arxiv.org/abs/2603.22489) (2026): threat-models MCP with STRIDE/DREAD and empirically evaluates how seven major MCP clients actually handle tool-poisoning attacks; finds most fail due to insufficient static validation
+- Hou et al., ["Model Context Protocol (MCP): Landscape, Security Threats, and Future Research Directions"](https://arxiv.org/abs/2503.23278) (2025): lifecycle-phase threat taxonomy across the MCP ecosystem
+- ["MCP-DPT: A Defense-Placement Taxonomy and Coverage Analysis for Model Context Protocol Security"](https://arxiv.org/abs/2604.07551) (2026): maps which architectural layers, clients included, existing defenses actually cover, and which they leave exposed
 
 ## Disclaimer
 
