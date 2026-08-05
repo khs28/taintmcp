@@ -109,7 +109,7 @@ Every call then goes through a configurable policy engine (check 6, see `package
 
 ## Installation
 
-Requires Node.js 20 or newer.
+Requires Node.js 22.5 or newer (for the built-in `node:sqlite` module).
 
 ```bash
 npm install -g taintmcp
