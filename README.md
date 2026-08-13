@@ -13,9 +13,11 @@ Agent  <-->  taintmcp  <-->  your real MCP server(s)
 ```bash
 npm install -g taintmcp
 taintmcp wrap -- node /absolute/path/to/your/mcp-server/index.js
+# or, for a remote MCP server over HTTP:
+taintmcp wrap --url https://mcp.example.com/mcp
 ```
 
-That is the whole setup for protecting a single MCP server: no config file, no code changes to your server. See [Usage](#usage) below for pointing an actual MCP client at it and for protecting multiple servers with custom policy rules.
+That is the whole setup for protecting a single MCP server, local or remote: no config file, no code changes to your server. See [Usage](#usage) below for pointing an actual MCP client at it and for protecting multiple servers with custom policy rules.
 
 ---
 
@@ -51,7 +53,7 @@ This is not a claim to be the first defense of its kind. The mitigation concept 
 
 ## How it works
 
-taintmcp presents itself as an MCP server to your agent, and as an MCP client to your real downstream server(s). All protocol traffic passes through it in both directions, so it can inspect and rewrite messages without either side needing to know it is there.
+taintmcp presents itself as an MCP server to your agent over stdio, and as an MCP client to your real downstream server(s), whether they run as a local stdio subprocess or a remote server over HTTP. All protocol traffic passes through it in both directions, so it can inspect and rewrite messages without either side needing to know it is there.
 
 ### The six checks
 
