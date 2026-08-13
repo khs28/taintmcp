@@ -145,7 +145,31 @@ taintmcp start --config taintmcp.config.json
 
 Only `targets` is required; everything else falls back to the same defaults `wrap` uses. See `gateway.m4.config.json` in this repo for a fuller example with custom rules.
 
-**Current limitation:** both hops (agent to gateway, and gateway to downstream server) use stdio transport. Remote HTTP/SSE MCP servers are not yet supported.
+### Protecting a remote MCP server over HTTP
+
+taintmcp itself is always launched by your agent over stdio (that's how MCP clients spawn local servers), but the *downstream* server it protects can be either a local command or a remote HTTP server. For a remote server, give `url` instead of `command`:
+
+```bash
+taintmcp wrap --url https://mcp.example.com/mcp
+# with auth:
+taintmcp wrap --url https://mcp.example.com/mcp -H "Authorization: Bearer $TOKEN"
+```
+
+Or in a config file, per target:
+
+```json
+{
+  "targets": [
+    {
+      "id": "my-remote-server",
+      "url": "https://mcp.example.com/mcp",
+      "headers": { "Authorization": "Bearer your-token-here" }
+    }
+  ]
+}
+```
+
+taintmcp speaks the current Streamable HTTP transport and falls back automatically to the older HTTP+SSE transport if a server only supports that (set `"transport": "http"` or `"transport": "sse"` on a target to force one instead of auto-detecting). Local (`command`) and remote (`url`) targets can be freely mixed in the same config's `targets` array.
 
 ## Tech stack
 

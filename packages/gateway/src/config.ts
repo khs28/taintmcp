@@ -1,12 +1,30 @@
 import { readFile } from "node:fs/promises";
 import { z } from "zod";
 
-const TargetConfigSchema = z.object({
-  id: z.string(),
-  command: z.string(),
-  args: z.array(z.string()).default([]),
-  env: z.record(z.string(), z.string()).optional(),
-});
+// A target is either a local process talked to over stdio (`command`/`args`/`env`)
+// or a remote MCP server talked to over HTTP (`url`, optionally with `headers` for
+// auth, e.g. `{ "Authorization": "Bearer ..." }`). Exactly one of the two shapes
+// must be provided; `transport` only matters for the HTTP shape, to pick between
+// the current Streamable HTTP spec and the older HTTP+SSE transport some servers
+// still speak ("auto" tries Streamable HTTP first and falls back to SSE).
+const TargetConfigSchema = z
+  .object({
+    id: z.string(),
+    command: z.string().optional(),
+    args: z.array(z.string()).default([]),
+    env: z.record(z.string(), z.string()).optional(),
+    url: z.string().optional(),
+    headers: z.record(z.string(), z.string()).optional(),
+    transport: z.enum(["http", "sse", "auto"]).default("auto"),
+  })
+  .superRefine((target, ctx) => {
+    if (!target.command === !target.url) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `target "${target.id}" must specify exactly one of \`command\` (stdio) or \`url\` (HTTP), not both or neither`,
+      });
+    }
+  });
 
 const TierSchema = z.enum(["low", "sensitive", "critical"]);
 const DecisionSchema = z.enum(["allow", "flag", "block"]);

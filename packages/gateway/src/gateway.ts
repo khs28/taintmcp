@@ -1,6 +1,8 @@
 import type { DatabaseSync } from "node:sqlite";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema, type CallToolResult, type Tool } from "@modelcontextprotocol/sdk/types.js";
@@ -47,17 +49,51 @@ function mergeEnv(target: TargetConfig): Record<string, string> {
   );
 }
 
-/** Connects as an MCP client to every configured downstream target over stdio. */
-export async function connectDownstreams(config: GatewayConfig): Promise<DownstreamConnection[]> {
-  const connections: DownstreamConnection[] = [];
-  for (const target of config.targets) {
-    const client = new Client({ name: "taintmcp-gateway", version: "0.1.0" });
+/**
+ * Builds the transport for a single target: stdio for a local `command`,
+ * or Streamable HTTP (falling back to the legacy HTTP+SSE transport when
+ * the server doesn't speak Streamable HTTP) for a remote `url`.
+ */
+async function connectTarget(target: TargetConfig, client: Client): Promise<void> {
+  if (target.command) {
     const transport = new StdioClientTransport({
       command: target.command,
       args: target.args,
       env: mergeEnv(target),
     });
     await client.connect(transport);
+    return;
+  }
+
+  const url = new URL(target.url!);
+  const requestInit = target.headers ? { headers: target.headers } : undefined;
+
+  if (target.transport === "sse") {
+    await client.connect(new SSEClientTransport(url, { requestInit }));
+    return;
+  }
+  if (target.transport === "http") {
+    await client.connect(new StreamableHTTPClientTransport(url, { requestInit }));
+    return;
+  }
+
+  // "auto": try the current Streamable HTTP spec first, and fall back to the
+  // older HTTP+SSE transport if the server rejects it — this is the same
+  // fallback pattern the MCP SDK's own docs recommend for talking to a
+  // server of unknown vintage.
+  try {
+    await client.connect(new StreamableHTTPClientTransport(url, { requestInit }));
+  } catch {
+    await client.connect(new SSEClientTransport(url, { requestInit }));
+  }
+}
+
+/** Connects as an MCP client to every configured downstream target, over stdio or HTTP. */
+export async function connectDownstreams(config: GatewayConfig): Promise<DownstreamConnection[]> {
+  const connections: DownstreamConnection[] = [];
+  for (const target of config.targets) {
+    const client = new Client({ name: "taintmcp-gateway", version: "0.1.0" });
+    await connectTarget(target, client);
     const serverId = client.getServerVersion()?.name ?? target.id;
     connections.push({ id: target.id, client, serverId });
   }
@@ -149,8 +185,11 @@ export function logShadowReport(findings: ShadowFinding[]): void {
 export async function startGateway(config: GatewayConfig): Promise<RunningGateway> {
   const db = openStore(config.storage?.dbPath ?? DEFAULT_DB_PATH);
   const connections = await connectDownstreams(config);
+  const targetById = new Map(config.targets.map((t) => [t.id, t]));
   for (const conn of connections) {
-    console.error(`[gateway] connected as client to downstream MCP server "${conn.id}" (reports itself as "${conn.serverId}")`);
+    const target = targetById.get(conn.id);
+    const via = target?.url ? `HTTP at ${target.url}` : "stdio";
+    console.error(`[gateway] connected as client to downstream MCP server "${conn.id}" via ${via} (reports itself as "${conn.serverId}")`);
     const report = await inspectTools(conn.client, conn.serverId, db);
     logInspectionReport(report);
   }

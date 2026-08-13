@@ -20,24 +20,51 @@ program
     await startGateway(config);
   });
 
-// The no-config-file path: wraps a single MCP server command directly, the
-// same way you'd normally launch it. Everything after the literal "--" is
-// passed straight through as the wrapped server's own command and
-// arguments, untouched, so taintmcp's own flags never collide with the
-// wrapped server's.
-program
-  .command("wrap")
-  .description("Start the gateway in front of a single MCP server, no config file needed")
-  .argument("<command...>", "the command that starts your MCP server, after a -- separator")
-  .option("-d, --db <path>", "SQLite database path for logs", "taintmcp.db")
-  .action(async (commandParts: string[], opts: { db: string }) => {
-    const [command, ...args] = commandParts;
-    if (!command) {
-      console.error('[gateway] usage: taintmcp wrap -- <command> [args...]  (for example: taintmcp wrap -- node my-server.js)');
+// The no-config-file path: wraps a single MCP server directly, the same way
+// you'd normally launch or point a client at it. Either give a local command
+// after a "--" separator (passed straight through untouched, so taintmcp's
+// own flags never collide with the wrapped server's), or give --url to
+// protect a remote HTTP/SSE MCP server instead.
+function parseHeaders(headerFlags: string[] | undefined): Record<string, string> | undefined {
+  if (!headerFlags || headerFlags.length === 0) return undefined;
+  const headers: Record<string, string> = {};
+  for (const flag of headerFlags) {
+    const separatorIndex = flag.indexOf(":");
+    if (separatorIndex === -1) {
+      console.error(`[gateway] invalid --header "${flag}", expected format "Key: Value"`);
       process.exit(1);
     }
+    const key = flag.slice(0, separatorIndex).trim();
+    const value = flag.slice(separatorIndex + 1).trim();
+    headers[key] = value;
+  }
+  return headers;
+}
+
+program
+  .command("wrap")
+  .description("Start the gateway in front of a single MCP server (local command or remote URL), no config file needed")
+  .argument("[command...]", "the command that starts your MCP server, after a -- separator (omit this if using --url)")
+  .option("-d, --db <path>", "SQLite database path for logs", "taintmcp.db")
+  .option("-u, --url <url>", "URL of a remote MCP server to protect (Streamable HTTP or SSE), instead of a local command")
+  .option("-H, --header <header...>", 'extra HTTP header to send to the remote server, format "Key: Value" (repeatable, requires --url)')
+  .action(async (commandParts: string[], opts: { db: string; url?: string; header?: string[] }) => {
+    let target: GatewayConfig["targets"][number];
+    if (opts.url) {
+      target = { id: "wrapped", url: opts.url, headers: parseHeaders(opts.header), args: [], transport: "auto" };
+    } else {
+      const [command, ...args] = commandParts;
+      if (!command) {
+        console.error(
+          "[gateway] usage: taintmcp wrap -- <command> [args...]  (for example: taintmcp wrap -- node my-server.js)\n" +
+            "       or:     taintmcp wrap --url <http-url>  (for example: taintmcp wrap --url https://example.com/mcp)",
+        );
+        process.exit(1);
+      }
+      target = { id: "wrapped", command, args, transport: "auto" };
+    }
     const config: GatewayConfig = {
-      targets: [{ id: "wrapped", command, args }],
+      targets: [target],
       storage: { dbPath: opts.db },
     };
     await startGateway(config);
