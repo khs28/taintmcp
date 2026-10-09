@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "A runtime, client-side security gateway for the Model Context Protocol (MCP). Blocks indirect prompt injection, tool poisoning, rug-pulls, and tool shadowing.",
   "license": "MIT",
+  "author": "Khushi Singh",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -26,7 +27,9 @@
     "prompt-injection",
     "ai-agents",
     "gateway",
-    "proxy"
+    "proxy",
+    "tool-poisoning",
+    "mcp-security"
   ],
   "engines": {
     "node": ">=22.5.0"

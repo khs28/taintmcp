@@ -26,7 +26,7 @@ import path from "node:path";
 import { loadConfig, connectDownstreams, inspectTools, logInspectionReport, openStore } from "taintmcp";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const CONFIG_PATH = path.join(ROOT, "gateway.malicious.config.json");
+const CONFIG_PATH = path.join(ROOT, "examples/malicious.config.json");
 
 async function runConnection(label, env) {
   console.log(`\n=== ${label} ===`);

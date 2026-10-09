@@ -1,6 +1,10 @@
 # taintmcp
 
+[![CI](https://github.com/khs28/taintmcp/actions/workflows/ci.yml/badge.svg)](https://github.com/khs28/taintmcp/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/taintmcp.svg)](https://www.npmjs.com/package/taintmcp)
+[![npm downloads](https://img.shields.io/npm/dm/taintmcp.svg)](https://www.npmjs.com/package/taintmcp)
+[![Node.js](https://img.shields.io/node/v/taintmcp.svg)](https://nodejs.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/khs28/taintmcp/blob/main/LICENSE)
 
 A runtime, client-side security gateway for the Model Context Protocol (MCP). taintmcp sits between an AI agent and any MCP server, inspecting tool schemas and tool output in real time to stop indirect prompt injection, tool poisoning, rug-pulls, and tool shadowing, without requiring access to a server's source code or trusting it in any way.
 
@@ -145,7 +149,7 @@ taintmcp start --config taintmcp.config.json
 }
 ```
 
-Only `targets` is required; everything else falls back to the same defaults `wrap` uses. See `gateway.m4.config.json` in this repo for a fuller example with custom rules.
+Only `targets` is required; everything else falls back to the same defaults `wrap` uses. See [`examples/policy.config.json`](https://github.com/khs28/taintmcp/blob/main/examples/policy.config.json) for a fuller example with custom rules.
 
 ### Protecting a remote MCP server over HTTP
 
@@ -185,7 +189,7 @@ taintmcp speaks the current Streamable HTTP transport and falls back automatical
 
 ## See it in action
 
-`npm run demo`, `npm run demo:m2`, and `npm run demo:m4` are scripted demos bundled with the source that exercise every check without needing your own MCP server or an API key. A real, unedited transcript of a live Claude agent getting an attack blocked, plus setup instructions for running the demos yourself, live in [DEMOS.md](./DEMOS.md).
+`npm run demo`, `npm run demo:m2`, and `npm run demo:m4` are scripted demos bundled with the source that exercise every check without needing your own MCP server or an API key. A real, unedited transcript of a live Claude agent getting an attack blocked, plus setup instructions for running the demos yourself, live in [DEMOS.md](https://github.com/khs28/taintmcp/blob/main/DEMOS.md).
 
 ## Dashboard
 
@@ -219,6 +223,18 @@ npm run dashboard taintmcp.db dashboard.html
 - Huang, Huang, Tran, Milani Fard, ["Model Context Protocol Threat Modeling and Analyzing Vulnerabilities to Prompt Injection with Tool Poisoning"](https://arxiv.org/abs/2603.22489) (2026): threat-models MCP with STRIDE/DREAD and empirically evaluates how seven major MCP clients actually handle tool-poisoning attacks; finds most fail due to insufficient static validation
 - Hou et al., ["Model Context Protocol (MCP): Landscape, Security Threats, and Future Research Directions"](https://arxiv.org/abs/2503.23278) (2025): lifecycle-phase threat taxonomy across the MCP ecosystem
 - ["MCP-DPT: A Defense-Placement Taxonomy and Coverage Analysis for Model Context Protocol Security"](https://arxiv.org/abs/2604.07551) (2026): maps which architectural layers, clients included, existing defenses actually cover, and which they leave exposed
+
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](https://github.com/khs28/taintmcp/blob/main/CONTRIBUTING.md) for how to build the project and run the demo suite, and [CHANGELOG.md](https://github.com/khs28/taintmcp/blob/main/CHANGELOG.md) for release history.
+
+## Security
+
+If you find a way to get a malicious call past taintmcp, please report it privately as described in [SECURITY.md](https://github.com/khs28/taintmcp/blob/main/SECURITY.md) rather than opening a public issue.
+
+## License
+
+[MIT](https://github.com/khs28/taintmcp/blob/main/LICENSE)
 
 ## Disclaimer
 
