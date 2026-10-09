@@ -5,7 +5,7 @@
 //
 // Entirely scripted, no real LLM calls — this drives the gateway's MCP
 // server facade directly (the way an agent's tool calls would arrive)
-// using gateway.m4.config.json, which connects the trusted benign-server
+// using examples/policy.config.json, which connects the trusted benign-server
 // alongside the malicious-server with SHADOW=1 (adds get_weather, an
 // exact clone of benign-server's tool, and get_weathr, a one-character
 // typosquat of it) and a small policy config: read_report is tiered
@@ -26,7 +26,7 @@ import { connectViaGateway } from "@taintmcp/claude-agent";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const GATEWAY_TARGET = {
   command: "node",
-  args: [path.join(ROOT, "packages/gateway/dist/cli.js"), "start", "--config", path.join(ROOT, "gateway.m4.config.json")],
+  args: [path.join(ROOT, "packages/gateway/dist/cli.js"), "start", "--config", path.join(ROOT, "examples/policy.config.json")],
 };
 
 function summarize(outcome) {

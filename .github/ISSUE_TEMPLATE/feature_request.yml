@@ -1,0 +1,19 @@
+name: Feature request
+description: Suggest a new check, policy option, or improvement.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: If it's an attack taintmcp doesn't catch today, a short example of the malicious tool schema or output helps a lot.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

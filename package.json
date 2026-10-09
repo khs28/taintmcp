@@ -3,6 +3,11 @@
   "private": true,
   "version": "0.1.0",
   "description": "Runtime, client-side security gateway for the Model Context Protocol (MCP).",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/khs28/taintmcp.git"
+  },
   "workspaces": [
     "packages/*"
   ],

@@ -6,7 +6,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "../../.."); // packages/mock-agent/dist -> repo root
 const GATEWAY_CLI = path.join(ROOT, "packages/gateway/dist/cli.js");
-const GATEWAY_CONFIG = process.env.GATEWAY_CONFIG ?? path.join(ROOT, "gateway.config.json");
+const GATEWAY_CONFIG = process.env.GATEWAY_CONFIG ?? path.join(ROOT, "examples/basic.config.json");
 const CITY = process.env.DEMO_CITY ?? "London";
 
 /**

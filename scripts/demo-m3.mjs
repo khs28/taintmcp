@@ -45,7 +45,7 @@ const BENIGN_TARGET = { command: "node", args: [path.join(ROOT, "packages/benign
 const MALICIOUS_TARGET = { command: "node", args: [path.join(ROOT, "packages/malicious-server/dist/index.js")] };
 const GATEWAY_TARGET = {
   command: "node",
-  args: [path.join(ROOT, "packages/gateway/dist/cli.js"), "start", "--config", path.join(ROOT, "gateway.m3.config.json")],
+  args: [path.join(ROOT, "packages/gateway/dist/cli.js"), "start", "--config", path.join(ROOT, "examples/provenance.config.json")],
 };
 
 function printEvent(event) {
